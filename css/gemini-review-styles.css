@@ -1,146 +1,176 @@
-/* Gemini Review Styles - v2.3.9 compatible */
+/* Gemini Review Styles */
 
 /* General Review Container */
 .gemini-review {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
     line-height: 1.7;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif; /* A common system font stack */
     margin: 2em 0;
-    padding: 20px;
-    border: 1px solid #dcdcdc;
+    padding: 25px; /* Slightly more padding */
+    border: 1px solid #e0e0e0; /* Softer border */
     border-radius: 8px;
     background-color: #ffffff;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.07); /* More subtle shadow */
+    color: #333; /* Default text color */
 }
 
-/* Section Headers */
+/* Section Headers (h3) */
 .gemini-review h3 {
-    display: flex !important; /* Using flex to help align icon and text */
-    align-items: center !important;
-    font-size: 1.5em; /* Approx 24px if base is 16px */
-    margin-top: 1.8em;
-    margin-bottom: 0.8em;
-    font-weight: 600;
-    color: #2c3e50; /* Dark blue-grey */
-    border-bottom: 2px solid #3498db; /* Primary blue */
-    padding-bottom: 0.4em;
-    line-height: 1.3; /* Adjusted for flex alignment */
+    display: flex; /* For aligning emoji and text */
+    align-items: center;
+    font-size: 1.6em; /* Slightly larger for more impact */
+    font-weight: 600; /* Semibold */
+    color: #1a252f; /* Darker, more contrasted header color */
+    margin-top: 2em;
+    margin-bottom: 1em;
+    padding-bottom: 0.5em;
+    border-bottom: 2px solid #0073aa; /* WordPress blue for a professional touch */
+    line-height: 1.4;
 }
 
-.gemini-review h3:first-of-type { /* More specific than :first-child for content injected via JS */
-    margin-top: 0.5em;
+.gemini-review h3:first-of-type {
+    margin-top: 0.5em; /* Less top margin for the very first header */
 }
 
-/* Styling for the Dashicon SPAN within H3 */
-.gemini-review h3 span.dashicons {
-    font-family: "dashicons" !important; /* CRUCIAL: Ensure Dashicons font is applied */
-    display: inline-block !important;    /* Ensure it's displayed */
-    font-size: 1em;                      /* Relative to h3 font-size (so, 1.5em * 1 = 1.5em) */
-    line-height: 1;                      /* Prevents extra space around icon */
-    margin-right: 0.5em;                 /* Space between icon and text */
-    color: #3498db !important;           /* Match border color, use !important for testing overrides */
-    vertical-align: middle;              /* Better alignment with text, though flex align-items on h3 helps more */
-    background: none !important;         /* Remove any accidental background */
-    padding: 0 !important;
-    border: none !important;
-    speak: none;                         /* From WordPress Dashicons CSS */
-    -webkit-font-smoothing: antialiased; /* From WordPress Dashicons CSS */
-    -moz-osx-font-smoothing: grayscale;  /* From WordPress Dashicons CSS */
-}
+/* Emojis within H3 will inherit h3's font-size.
+   If specific emoji styling (size, alignment) is needed, target them carefully.
+   For example, if emojis are always the first child character:
+.gemini-review h3::first-letter { (This is tricky if first letter isn't the emoji)
+    margin-right: 0.4em;
+    font-size: 1.1em; /* Slightly larger emoji if desired */
+/* }
+   For now, flex alignment on H3 should handle vertical alignment well.
+*/
+
 
 /* Paragraphs */
 .gemini-review p {
-    margin-bottom: 1.3em;
-    color: #4A4A4A; /* Slightly softer black */
-    font-size: 1em; /* Approx 16px if base is 16px */
+    margin-bottom: 1.4em;
+    color: #454545; /* Slightly softer than pure black */
+    font-size: 1em; /* Standard paragraph size */
 }
 
-.gemini-review p strong {
-    font-weight: 600; /* Semibold */
-    color: #1a252f; /* Darker for emphasis */
+.gemini-review p strong,
+.gemini-review li strong { /* Apply to strong in list items too */
+    font-weight: 600;
+    color: #101519; /* Darker for emphasis */
 }
 
-/* Generic Lists (e.g., within Product Range) */
+/* Generic Lists (e.g., for Product Range, etc.) */
 .gemini-review ul.gemini-generic-list {
-    margin-left: 0; /* Reset browser default */
-    margin-bottom: 1.3em;
-    list-style-type: none; 
-    padding-left: 0; /* Will use ::before for custom bullets */
+    list-style-type: none;
+    padding-left: 0;
+    margin-top: 0.5em;
+    margin-bottom: 1.4em;
 }
 
 .gemini-review ul.gemini-generic-list li {
-    margin-bottom: 0.7em;
-    padding-left: 1.8em; /* Space for the custom bullet */
-    color: #4A4A4A;
-    position: relative; /* For positioning the ::before pseudo-element */
+    position: relative;
+    padding-left: 1.8em; /* Space for custom bullet */
+    margin-bottom: 0.8em;
+    color: #454545;
 }
 
 .gemini-review ul.gemini-generic-list li::before {
-    content: "\2022"; /* Unicode bullet character • */
-    color: #3498db; /* Primary blue */
-    font-weight: bold;
-    display: inline-block;
+    content: "•"; /* Standard bullet */
     position: absolute;
-    left: 0.5em; /* Positioned within the padding-left */
-    top: 0; /* Adjust if vertical alignment is off */
+    left: 0.5em;
+    top: 0; /* Adjust if needed based on line-height */
+    color: #0073aa; /* WordPress blue */
+    font-weight: bold;
+    font-size: 1.1em; /* Slightly larger bullet */
 }
-
-.gemini-review ul.gemini-generic-list li strong {
-    font-weight: 600;
-    color: #1a252f;
-}
-
 
 /* Pros & Cons Lists Styling */
 .gemini-review ul.gemini-pros-list,
 .gemini-review ul.gemini-cons-list {
     list-style-type: none;
-    padding-left: 0; /* Reset padding if using custom bullets via ::before */
-    margin-top: 0.5em;
-    margin-bottom: 1.3em;
+    padding-left: 0;
+    margin-top: 0.8em;
+    margin-bottom: 1.5em;
 }
 
 .gemini-review li.gemini-pro-item,
 .gemini-review li.gemini-con-item {
-    padding-left: 2em; /* Make space for the Dashicon ::before */
     position: relative;
-    margin-bottom: 0.6em;
+    padding-left: 2.2em; /* Increased padding for larger icon + space */
+    margin-bottom: 0.75em;
     line-height: 1.6;
-    color: #4A4A4A;
+    color: #454545;
+}
+
+.gemini-review li.gemini-pro-item::before,
+.gemini-review li.gemini-con-item::before {
+    font-family: "dashicons"; /* Essential for Dashicons */
+    position: absolute;
+    left: 0;
+    top: 0.05em; /* Fine-tune vertical alignment */
+    font-size: 1.4em; /* Larger, clearer icons */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 .gemini-review li.gemini-pro-item::before {
-    font-family: "dashicons" !important; /* CRUCIAL: Ensure Dashicons font */
-    content: "\f147"; /* Dashicon for checkmark (yes) */
-    position: absolute;
-    left: 0;
-    top: 0.1em; /* Adjust vertical alignment as needed */
-    color: #27ae60 !important; /* Green */
-    font-size: 1.2em; /* Adjust icon size if needed */
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    content: "\f147"; /* Dashicon: yes */
+    color: #27ae60; /* Green */
 }
 
 .gemini-review li.gemini-con-item::before {
-    font-family: "dashicons" !important; /* CRUCIAL: Ensure Dashicons font */
-    content: "\f158"; /* Dashicon for cross (no-alt) */
-    position: absolute;
-    left: 0;
-    top: 0.1em; /* Adjust vertical alignment as needed */
-    color: #c0392b !important; /* Red */
-    font-size: 1.2em; /* Adjust icon size if needed */
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    content: "\f158"; /* Dashicon: no-alt (cross) */
+    color: #c0392b; /* Red */
 }
 
-.gemini-review li.gemini-pro-item strong,
-.gemini-review li.gemini-con-item strong {
-    font-weight: 600;
-    color: #1a252f;
+/* Admin Meta Box Specific Button Styling (Optional - for the "Update AI Content" button) */
+/* You would add the class 'gemini-update-ai-green' in your JS when content is present and you want it green */
+#gemini-trigger.gemini-update-ai-green {
+    background-color: #27ae60 !important; /* A nice green */
+    border-color: #219150 !important;
+    color: white !important;
+}
+#gemini-trigger.gemini-update-ai-green:hover {
+    background-color: #219150 !important;
+    border-color: #1c7a43 !important;
 }
 
-/* Optional: Remove the red border test if you added it previously */
-/*
-.gemini-review {
-    border: 3px solid red !important;
+/* Green Button Style for "Update AI Content" */
+/* Applied to #gemini-trigger when it also has .gemini-button-green */
+#gemini-trigger.gemini-button-green {
+    background: #27ae60; /* A pleasant green */
+    border-color: #219150 #1c7a43 #1c7a43; /* Darker green shades for border */
+    box-shadow: 0 1px 0 #1c7a43;
+    color: #ffffff;
+    text-decoration: none;
+    text-shadow: 0 -1px 1px rgba(0,0,0,0.2); /* Text shadow for pop */
 }
-*/
+
+#gemini-trigger.gemini-button-green:hover,
+#gemini-trigger.gemini-button-green:focus {
+    background: #219150; /* Darker green on hover/focus */
+    border-color: #1c7a43;
+    color: #ffffff;
+}
+
+#gemini-trigger.gemini-button-green:focus {
+    /* WordPress focus style for accessibility */
+    border-color: #007cba; /* Standard WP focus blue border */
+    box-shadow: 0 0 0 1px #007cba; /* Standard WP focus blue shadow */
+    outline: 2px solid transparent; /* Remove default browser outline */
+}
+
+#gemini-trigger.gemini-button-green:active {
+    background: #1c7a43; /* Even darker green for active state */
+    border-color: #1c7a43;
+    box-shadow: inset 0 2px 0 #176337; /* Inset shadow for pressed look */
+}
+
+/* Optional: Ensure it overrides default .button-secondary if that class was somehow still present, though JS should prevent this. */
+/* This block might not be strictly necessary if JS class management is perfect but acts as a safeguard. */
+#gemini-trigger.gemini-button-green.button-secondary {
+    background: #27ae60;
+    border-color: #219150 #1c7a43 #1c7a43;
+    color: #ffffff;
+}
+#gemini-trigger.gemini-button-green.button-secondary:hover,
+#gemini-trigger.gemini-button-green.button-secondary:focus {
+    background: #219150;
+    border-color: #1c7a43;
+}
