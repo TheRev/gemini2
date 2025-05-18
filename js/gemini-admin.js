@@ -1,22 +1,37 @@
 jQuery(document).ready(function($) {
-    $('#gemini-trigger').on('click', function() {
-        var $button = $(this);
-        var $statusMessage = $('#gemini-status-message'); // Span for messages
+    const { __, sprintf } = wp.i18n;
+    const $button = $('#gemini-trigger');
+    const $statusMessage = $('#gemini-status-message');
 
-        // Check if post_id is available
+    // Function to update button state
+    function updateButtonState(hasContent) {
+        if (hasContent) {
+            $button.text(geminiAjax.i18n.updateText || __( 'Update AI Content', 'gemini2-business-lookup' ))
+                   .removeClass('button-primary gemini-generate-ai')
+                   .addClass('button-secondary gemini-update-ai');
+        } else {
+            $button.text(geminiAjax.i18n.generateText || __( 'Generate AI Content', 'gemini2-business-lookup' ))
+                   .removeClass('button-secondary gemini-update-ai')
+                   .addClass('button-primary gemini-generate-ai');
+        }
+    }
+
+    // Set initial button state on page load
+    updateButtonState(geminiAjax.hasAiContentMeta);
+
+    $button.on('click', function() {
         if (!geminiAjax.post_id || geminiAjax.post_id === 0) {
-            $statusMessage.text('Error: Post ID not available. Please save the post and try again.').css('color', 'red');
+            $statusMessage.text(geminiAjax.i18n.errorPostId || __( 'Error: Post ID not available. Please save the post and try again.', 'gemini2-business-lookup' )).css('color', 'red');
             console.error("Gemini AJAX Error: Post ID is missing or zero.", geminiAjax);
-             // Clear status message after a few seconds
             setTimeout(function() {
                 $statusMessage.text('').css('color', '');
             }, 7000);
-            return; // Stop execution if no post_id
+            return;
         }
 
-
-        $button.text('Generating...').prop('disabled', true);
-        $statusMessage.text('Processing...').css('color', ''); // Clear previous status color
+        const originalButtonText = $button.text(); // Store current text (Generate or Update)
+        $button.text(geminiAjax.i18n.generatingText || __( 'Generating...', 'gemini2-business-lookup' )).prop('disabled', true);
+        $statusMessage.text(geminiAjax.i18n.processingText || __( 'Processing...', 'gemini2-business-lookup' )).css('color', '');
 
         $.ajax({
             url: geminiAjax.ajax_url,
@@ -31,16 +46,15 @@ jQuery(document).ready(function($) {
                     var htmlToInsert = response.data.html_content;
                     var inserted = false;
 
-                    // Try Gutenberg first
+                    // Try Gutenberg
                     if (typeof wp !== 'undefined' && wp.data && wp.data.dispatch && wp.data.select('core/editor')) {
                         try {
                             const { getBlocks, resetBlocks, insertBlocks } = wp.data.dispatch('core/editor');
                             const { getBlocks: getCurrentBlocks } = wp.data.select('core/editor');
-                            
                             const currentBlocks = getCurrentBlocks();
                             const newBlocks = wp.blocks.rawHandler({ HTML: htmlToInsert });
                             
-                            if (newBlocks && newBlocks.length > 0) { // Ensure newBlocks is not empty
+                            if (newBlocks && newBlocks.length > 0) {
                                 if (currentBlocks.length === 0 || 
                                     (currentBlocks.length === 1 && currentBlocks[0].name === 'core/paragraph' && currentBlocks[0].attributes.content === '')) {
                                     resetBlocks(newBlocks);
@@ -56,6 +70,7 @@ jQuery(document).ready(function($) {
                         }
                     }
                     
+                    // Try TinyMCE
                     if (!inserted && typeof tinymce !== 'undefined' && tinymce.get('content')) {
                         try {
                             tinymce.get('content').execCommand('mceInsertContent', false, htmlToInsert);
@@ -65,78 +80,83 @@ jQuery(document).ready(function($) {
                         }
                     }
                     
+                    // Try Classic Editor Textarea
                     if (!inserted) {
                         var $classicEditorTextarea = $('#content'); 
                         if ($classicEditorTextarea.length) {
                             var currentVal = $classicEditorTextarea.val();
-                            $classicEditorTextarea.val(currentVal + "\n\n" + htmlToInsert); // Add some space
+                            $classicEditorTextarea.val(currentVal + "\n\n" + htmlToInsert);
                             inserted = true;
-                           // alert('Content appended to text editor. Please switch to Visual mode to see formatting or clean up HTML tags if in Text mode.');
-                           $statusMessage.text('Appended to text editor. Review formatting.').css('color', 'orange');
+                           $statusMessage.text(geminiAjax.i18n.appendSuccess || __( 'Appended to text editor. Review formatting.', 'gemini2-business-lookup' )).css('color', 'orange');
                         }
                     }
 
                     if (inserted) {
-                        if ($statusMessage.text() === 'Processing...' || $statusMessage.text() === '') { // Avoid overwriting specific append message
-                           $statusMessage.text(response.data.message || 'Content inserted!').css('color', 'green');
+                        // Use a general success message, or the one from PHP if provided and more specific.
+                        let serverMsg = response.data.message; // Already translated by PHP
+                        let finalMsg = serverMsg ? (serverMsg + " " + __( 'Content inserted/updated.', 'gemini2-business-lookup' )) : (geminiAjax.i18n.successMessage || __( 'AI Content Generated and Inserted!', 'gemini2-business-lookup' ));
+                        
+                        if ($statusMessage.text() === (geminiAjax.i18n.processingText || __( 'Processing...', 'gemini2-business-lookup' )) || $statusMessage.text() === '') {
+                           $statusMessage.text(finalMsg).css('color', 'green');
                         }
-                        // Consider if a page refresh or meta box reload is needed to show "Last Raw AI Output" update.
-                        // For now, user would save the post.
+                        updateButtonState(true); // Update button to "Update AI Content" state
                     } else {
-                        $statusMessage.text('Could not insert content into editor. HTML was generated but not inserted.').css('color', 'red');
-                         console.error("Gemini: HTML content was available but not inserted into any known editor.", htmlToInsert);
+                        $statusMessage.text(geminiAjax.i18n.insertFail || __( 'Could not insert content. See console for details.', 'gemini2-business-lookup' )).css('color', 'red');
+                        console.error("Gemini: HTML content was available but not inserted into any known editor.", htmlToInsert);
+                        updateButtonState(geminiAjax.hasAiContentMeta); // Revert to original state before click
                     }
 
-                } else {
-                    var errorMsg = 'Error: ';
-                    if (response.data && typeof response.data === 'string') {
-                        errorMsg += response.data;
-                    } else if (response.data && response.data.message) { // Check if response.data itself is the message
+                } else { // AJAX success but logical error from PHP
+                    var errorMsg = __( 'Error:', 'gemini2-business-lookup' ) + ' ';
+                    if (response.data && typeof response.data === 'string') { // Error string from wp_send_json_error
+                        errorMsg += response.data; 
+                    } else if (response.data && response.data.message) { // Error object with message from wp_send_json_error
                          errorMsg += response.data.message;
-                    } else if (typeof response.data === 'object' && response.data !== null) { // If data is an object with details
-                        errorMsg += JSON.stringify(response.data);
-                    } else if (!response.success && typeof response.data === 'string' && response.data.includes("blocked")) { // Specific check for blocked content
-                        errorMsg += response.data; // Show the detailed blocked message
-                    }
-                    else {
-                        errorMsg += 'Unknown error generating content. Check console.';
+                    } else {
+                        errorMsg += geminiAjax.i18n.genericError || __( 'Unknown error generating content. Check console.', 'gemini2-business-lookup' );
                     }
                     $statusMessage.text(errorMsg).css('color', 'red');
                     console.error("Gemini AJAX Success with Error:", response);
+                    // Decide button state: if content existed before, revert to "Update", else "Generate"
+                    updateButtonState(geminiAjax.hasAiContentMeta); 
                 }
             },
             error: function(jqXHR, textStatus, errorThrown) {
-                var errorMessage = 'AJAX error: ' + textStatus;
+                var errorMessage = __( 'AJAX error:', 'gemini2-business-lookup' ) + ' ' + textStatus;
                 if (errorThrown) errorMessage += ' - ' + errorThrown;
 
                 if (jqXHR.responseText) {
                     try {
                         var responseParsed = JSON.parse(jqXHR.responseText);
                         if(responseParsed && responseParsed.data && typeof responseParsed.data === 'string'){
-                            errorMessage += '\nServer: ' + responseParsed.data;
+                            errorMessage += '\n' + __( 'Server:', 'gemini2-business-lookup' ) + ' ' + responseParsed.data;
                         } else if (responseParsed && responseParsed.data && responseParsed.data.message) {
-                             errorMessage += '\nServer: ' + responseParsed.data.message;
-                        } else if (responseParsed && responseParsed.data) {
-                             errorMessage += '\nServer: ' + JSON.stringify(responseParsed.data);
+                             errorMessage += '\n' + __( 'Server:', 'gemini2-business-lookup' ) + ' ' + responseParsed.data.message;
                         }
                     } catch (e) {
-                        // Not JSON or no data field, append raw response text if it's useful
-                        if (jqXHR.responseText.length < 300) { // Avoid overly long raw text
-                           // errorMessage += "\nRaw Response: " + jqXHR.responseText;
-                        }
                         console.warn("Gemini AJAX error: Could not parse JSON response.", jqXHR.responseText);
                     }
                 }
-                $statusMessage.text(errorMessage.replace(/\n/g, '<br>')).css('color', 'red');
+                $statusMessage.html(errorMessage.replace(/\n/g, '<br>')).css('color', 'red');
                 console.error("Gemini AJAX Error Full Details:", jqXHR.status, jqXHR.responseText, textStatus, errorThrown);
+                // Decide button state on error
+                updateButtonState(geminiAjax.hasAiContentMeta);
             },
-            complete: function() {
-                $button.text('Generate Business Description with AI').prop('disabled', false);
+            complete: function(jqXHR, textStatus) {
+                // Button text and state are now handled in success/error via updateButtonState()
+                // Only re-enable the button here.
+                $button.prop('disabled', false);
+                
+                // Update the geminiAjax.hasAiContentMeta flag if content was successfully generated
+                if (textStatus === 'success' && jqXHR.responseJSON && jqXHR.responseJSON.success) {
+                    geminiAjax.hasAiContentMeta = true; 
+                }
+
                 setTimeout(function() {
-                    if ($statusMessage.css('color') !== 'red' && $statusMessage.css('color') !== 'orange') { // Don't clear errors/warnings too quickly
+                    if ($statusMessage.css('color') !== 'red' && $statusMessage.css('color') !== 'orange') {
                         $statusMessage.text('').css('color', '');
                     }
-                }, 7000); // Clear after 7 seconds
+                }, 7000);
             }
         });
     });
