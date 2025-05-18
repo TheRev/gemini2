@@ -78,7 +78,7 @@ function enqueue_gemini_script( $hook ) {
 		'gemini-admin',
 		plugins_url( 'js/gemini-admin.js', __FILE__ ),
 		array( 'jquery' ),
-		'2.0.4.' . time(),
+		'2.0.5.' . time(), // Incremented version
 		true
 	);
 	wp_localize_script( 'gemini-admin', 'geminiAjax', array(
@@ -101,9 +101,9 @@ function gemini_ajax_search_handler() {
 	}
 	// Build prompt text for detailed output
 	$prompt_text = sprintf(
-		"Write a professional and detailed business review about '%s' located in %s, a prime destination for scuba diving. Structure the review with the following exact section headers, each on a new line and followed immediately by the content for that section:\n\n" .
+		"Write a professional and detailed business review about '%s' located in %s, a prime destination for scuba diving. Structure the review with the following exact section headers, each on a new line a[...]" .
 		"Overview\n" .
-		"Provide a general overview of the dive operation, mentioning any certifications, services offered (introductory dives, certifications, excursions), and any unique features like on-site accommodation.\n\n" .
+		"Provide a general overview of the dive operation, mentioning any certifications, services offered (introductory dives, certifications, excursions), and any unique features like on-site accommodatio[...]" .
 		"Strengths\n" .
 		"Detail the key strengths of the business using bullet points where appropriate. Include specific aspects like certification benefits, the range of services offered (list examples).\n\n" .
 		"Potential Weaknesses\n" .
@@ -114,7 +114,7 @@ function gemini_ajax_search_handler() {
 		$name,
 		$city
 	);
-	$model = 'gemini-1.5-pro';
+	$model = 'gemini-2.0-flash'; // Updated model
 	$api_key = get_option( 'gemini2_api_key', '' );
 	if ( ! $api_key ) {
 		wp_send_json_error( 'Gemini API key not set in plugin settings.' );
@@ -154,7 +154,7 @@ function gemini_ajax_search_handler() {
 	$response_code = wp_remote_retrieve_response_code( $response );
 	$response_body = wp_remote_retrieve_body( $response );
 	if ( $response_code !== 200 ) {
-		wp_send_json_error( 'API returned error code: ' . $response_code . '. Check your API key and settings.' );
+		wp_send_json_error( 'API returned error code: ' . $response_code . '. Response: ' . $response_body ); // Added response body for more debug info
 		return;
 	}
 	$data = json_decode( $response_body, true );
@@ -166,7 +166,7 @@ function gemini_ajax_search_handler() {
 	if ( ! empty( $data['candidates'][0]['content']['parts'][0]['text'] ) ) {
 		$output = $data['candidates'][0]['content']['parts'][0]['text'];
 	} else {
-		wp_send_json_error( 'No content returned from the API.' );
+		wp_send_json_error( 'No content returned from the API. Full response: ' . $response_body); // Added response body
 		return;
 	}
 	update_post_meta( $post_id, '_gemini_last_results', $output );
@@ -286,7 +286,7 @@ add_action('admin_enqueue_scripts', function($hook) {
         'bulk-ai-business',
         plugins_url('js/bulk-ai-business.js', __FILE__),
         array('jquery'),
-        '1.0',
+        '1.0.1', // Incremented version
         true
     );
     wp_localize_script('bulk-ai-business', 'BulkAIBusiness', [
@@ -314,17 +314,17 @@ add_action('wp_ajax_bulk_ai_missing_business', function() {
     }
     $count = 0;
     $api_key = get_option( 'gemini2_api_key', '' );
-    $model = 'gemini-1.5-pro';
+    $model = 'gemini-2.0-flash'; // Updated model
     foreach($businesses as $post_id){
         $name = get_post_meta($post_id, '_gpd_display_name', true);
         $city = get_post_meta($post_id, '_gpd_locality', true);
         if(!$name || !$city) continue;
         $prompt_text = sprintf(
-            "Write a professional and detailed business review about '%s' located in %s, a prime destination for scuba diving. Structure the review with the following exact section headers, each on a new line and followed immediately by the content for that section:\n\n" .
+            "Write a professional and detailed business review about '%s' located in %s, a prime destination for scuba diving. Structure the review with the following exact section headers, each on a [...]" .
             "Overview\n" .
-            "Provide a general overview of the dive operation, mentioning any certifications, services offered (introductory dives, certifications, excursions), and any unique features like on-site accommodation.\n\n" .
+            "Provide a general overview of the dive operation, mentioning any certifications, services offered (introductory dives, certifications, excursions), and any unique features like on-site ac[...]" .
             "Strengths\n" .
-            "Detail the key strengths of the business using bullet points where appropriate. Include specific aspects like certification benefits, the range of services offered (list examples), the advantage of on-site accommodation (if applicable), the use of small boats and personalized experiences, positive aspects of their customer service (mentioning staff friendliness and valet service if noted in general reviews), their focus on safety, and the convenience of their location.\n\n" .
+            "Detail the key strengths of the business using bullet points where appropriate. Include specific aspects like certification benefits, the range of services offered (list examples), the ad[...]" .
             "Potential Weaknesses\n" .
             "Based on common considerations for dive operations, briefly mention potential weaknesses.\n\n" .
             "Overall\n" .
@@ -361,21 +361,35 @@ add_action('wp_ajax_bulk_ai_missing_business', function() {
                 'timeout' => 30,
             ]
         );
-        if ( is_wp_error( $response ) ) continue;
+        if ( is_wp_error( $response ) ) continue; // Simple skip on error for bulk
         $response_code = wp_remote_retrieve_response_code( $response );
-        $response_body = wp_remote_retrieve_body( $response );
-        if ( $response_code !== 200 ) continue;
+        $response_body = wp_remote_retrieve_body( $response ); // Get body for potential logging
+        if ( $response_code !== 200 ) {
+            // Optional: Log error for bulk operations if needed, e.g., error_log("Bulk AI Error for Post ID $post_id: Code $response_code, Response: $response_body");
+            continue;
+        }
         $data = json_decode( $response_body, true );
-        if ( isset( $data['error'] ) ) continue;
+        if ( isset( $data['error'] ) ) {
+            // Optional: Log error, e.g., error_log("Bulk AI API Error for Post ID $post_id: " . $data['error']['message']);
+            continue;
+        }
         $output = '';
         if ( ! empty( $data['candidates'][0]['content']['parts'][0]['text'] ) ) {
             $output = $data['candidates'][0]['content']['parts'][0]['text'];
         } else {
+            // Optional: Log no content, e.g., error_log("Bulk AI No Content for Post ID $post_id. Response: $response_body");
             continue;
         }
         update_post_meta($post_id, '_gemini_last_results', $output);
         update_post_meta($post_id, '_gemini_last_searched', current_time('mysql'));
         $count++;
+        if ($count % 5 == 0) { // Optional: Add a small delay for very large bulk operations to avoid rate limiting
+            sleep(1);
+        }
     }
-    wp_send_json_success("$count business(es) updated.");
+    if ($count > 0) {
+        wp_send_json_success("$count business(es) updated with AI reviews.");
+    } else {
+        wp_send_json_error('No businesses were updated. Check if they already have reviews or if there were API issues.');
+    }
 });
