@@ -17,15 +17,14 @@ function gemini_add_editor_styles() {
 }
 add_action( 'admin_init', 'gemini_add_editor_styles' );
 
-// Helper function to format raw AI content to HTML (content from v2.3.7 is good)
-// (No changes to this function itself, but its output will be wrapped later)
+// Helper function to format raw AI content to HTML
 function gemini_format_review_content_to_html( $raw_content ) {
     if ( empty( $raw_content ) ) {
-        return '<!-- Raw content was empty -->'; // Removed DEBUG: for brevity
+        return '<!-- Raw content was empty -->';
     }
 
     $lines = explode( "\n", $raw_content );
-    $html_output = '<!-- Starting gemini_format_review_content_to_html -->'; // Removed DEBUG:
+    $html_output = '<!-- Starting gemini_format_review_content_to_html -->';
     $in_list_type = null; 
     $current_section_key = null; 
 
@@ -140,7 +139,7 @@ function gemini_format_review_content_to_html( $raw_content ) {
     if ( $in_list_type ) {
         $html_output .= "</ul>\n";
     }
-    $html_output .= '<!-- Finished gemini_format_review_content_to_html -->'; // Removed DEBUG:
+    $html_output .= '<!-- Finished gemini_format_review_content_to_html -->';
     return $html_output;
 }
 
@@ -150,7 +149,7 @@ function gemini_add_meta_boxes() {
 		'gemini_meta_box',
 		'Gemini AI Business Description',
 		'render_gemini_meta_box',
-		'business',
+		'business', // CPT slug
 		'normal',
 		'high'
 	);
@@ -181,7 +180,6 @@ function render_gemini_meta_box( $post ) {
                 <h4>Formatted HTML (for editor insertion):</h4>
                 <div style="padding:10px;background:#f9f9f9;border:1px solid #eee;max-height:200px;overflow-y:auto;font-family:monospace;font-size:12px;white-space:pre-wrap;"><?php
                     $unwrapped_html = gemini_format_review_content_to_html( $raw_results_text );
-                    // For display in meta box, show the wrapped version
                     $wrapped_html_for_display = '<div class="gemini-review">' . "\n" . $unwrapped_html . "\n" . '</div>';
                     echo esc_html( $wrapped_html_for_display );
                 ?></div>
@@ -203,6 +201,11 @@ function gemini_plugin_enqueue_assets() {
 	global $post;
     if (is_admin()) {
         $current_screen = get_current_screen();
+        // Ensure Dashicons are enqueued on the 'business' CPT edit list screen as well for the new column
+        if ( $current_screen && ($current_screen->post_type === 'business') && ($current_screen->base === 'post' || $current_screen->base === 'edit') ) {
+            wp_enqueue_style( 'dashicons' ); 
+        }
+
         if ( $current_screen && ($current_screen->post_type === 'business') && ($current_screen->base === 'post') ) {
             wp_enqueue_script(
                 'gemini-admin',
@@ -217,7 +220,7 @@ function gemini_plugin_enqueue_assets() {
                 'nonce'    => wp_create_nonce( 'gemini_nonce' ),
                 'post_id'  => $post_id_for_js,
             ) );
-            wp_enqueue_style( 'dashicons' ); 
+            // Dashicons already enqueued above if it's a 'business' post type screen
         }
     }
 }
@@ -251,14 +254,13 @@ add_action( 'wp_enqueue_scripts', 'gemini_plugin_enqueue_frontend_styles' );
 function gemini_ajax_search_handler() {
 	check_ajax_referer( 'gemini_nonce', 'nonce' );
 	$post_id = intval( $_POST['post_id'] );
-	// ... (rest of post_id, name, city checks remain the same) ...
     if ( ! $post_id ) { wp_send_json_error( 'Post ID not found.' ); return; }
 	$name    = get_post_meta( $post_id, '_gpd_display_name', true );
 	$city    = get_post_meta( $post_id, '_gpd_locality', true );
 	if ( ! $name || ! $city ) { wp_send_json_error( 'Business name/city missing.' ); return; }
 
     $prompt_text_template = <<<PROMPT
-You are an AI assistant tasked with writing a friendly, professional, and informative scuba shop review. The review should appeal to both beginner and experienced divers and be approximately 400-500 words long.
+You are an AI assistant tasked with writing a friendly, professional, and informative scuba shop review. The review should appeal to both beginner and experienced divers and be approximately 400-500 w[...]
 **IMPORTANT INSTRUCTIONS FOR YOUR OUTPUT:** (Same as v2.3.7)
 **INPUT BULLET POINTS FOR AI:** (Same as v2.3.7)
 **EXPECTED AI OUTPUT STRUCTURE (Use these exact plain text headers):** (Same as v2.3.7)
@@ -278,8 +280,7 @@ The business name to be reviewed is '%s' and it is located in %s. Please ensure 
 PROMPT;
 
     $prompt_text = sprintf($prompt_text_template, $name, $city);
-	// ... (API call setup, $model, $api_key, $url, $body remains the same as v2.3.7) ...
-    $model = 'gemini-2.0-flash';
+    $model = 'gemini-2.0-flash'; // or your desired model
 	$api_key = get_option( 'gemini2_api_key', '' );
 	if ( ! $api_key ) { wp_send_json_error( 'Gemini API key not set.' ); return; }
 	$url   = sprintf( 'https://generativelanguage.googleapis.com/v1/models/%s:generateContent?key=%s', $model, $api_key );
@@ -293,7 +294,7 @@ PROMPT;
             [ 'category' => 'HARM_CATEGORY_DANGEROUS_CONTENT', 'threshold' => 'BLOCK_NONE', ], ] ];
     $body = wp_json_encode($body_params);
 	$response = wp_remote_post( $url, [ 'headers' => [ 'Content-Type' => 'application/json' ], 'body'    => $body, 'timeout' => 60, ] );
-	// ... (Error handling for $response, $response_code, $response_body, $data remains the same as v2.3.7) ...
+
     if ( is_wp_error( $response ) ) { wp_send_json_error( 'API connection error: ' . $response->get_error_message() ); return; }
 	$response_code = wp_remote_retrieve_response_code( $response );
 	$response_body = wp_remote_retrieve_body( $response );
@@ -310,23 +311,18 @@ PROMPT;
 	update_post_meta( $post_id, '_gemini_last_results', $raw_ai_output );
 	update_post_meta( $post_id, '_gemini_last_searched', current_time( 'mysql' ) );
 
-    // Get the formatted HTML (without the wrapper first)
 	$unwrapped_html_content = gemini_format_review_content_to_html( $raw_ai_output );
-
-    // **MODIFICATION START: Wrap the HTML for editor insertion**
     $html_content_for_editor = '<div class="gemini-review">' . "\n" . $unwrapped_html_content . "\n" . '</div>';
-    // **MODIFICATION END**
 
 	wp_send_json_success( [ 
         'message' => 'Description generated!', 
         'raw_content'  => $raw_ai_output, 
-        'html_content' => $html_content_for_editor // Send the wrapped HTML
+        'html_content' => $html_content_for_editor
     ] );
 }
 add_action( 'wp_ajax_gemini_search', 'gemini_ajax_search_handler' );
 
 // 5) Shortcode: [gemini_review post_id="123"]
-// This already adds the .gemini-review wrapper, so no change needed here.
 function gemini_review_shortcode( $atts ) {
 	$atts = shortcode_atts( [ 'post_id' => '', 'class'    => 'gemini-review', 'header'   => '', ], $atts, 'gemini_review' );
 	if ( empty( $atts['post_id'] ) ) { return '<p>Error: Post ID required.</p>'; }
@@ -334,32 +330,27 @@ function gemini_review_shortcode( $atts ) {
 	$raw_content = get_post_meta( $post_id, '_gemini_last_results', true );
 	if ( empty( $raw_content ) ) { return '<p>No AI review found.</p>'; }
 	
-    // Get the core HTML elements
     $core_html_content = gemini_format_review_content_to_html( $raw_content );
     
-    // Wrap it for the shortcode output
-	$output_html = '<div class="' . esc_attr( $atts['class'] ) . '">'; // .gemini-review is default
+	$output_html = '<div class="' . esc_attr( $atts['class'] ) . '">';
 	if ( ! empty( $atts['header'] ) ) { $output_html .= '<h2>' . esc_html( $atts['header'] ) . '</h2>'; }
-	$output_html .= $core_html_content; // Insert the unwrapped HTML, as the div is already here
+	$output_html .= $core_html_content;
 	$output_html .= '</div>';
 	return $output_html;
 }
 add_shortcode( 'gemini_review', 'gemini_review_shortcode' );
 add_shortcode( 'gemini_description', 'gemini_review_shortcode' );
 
-// Bulk processing functions (no changes needed to their core logic, they use the same prompt)
-// ... (Bulk action hooks and handler from v2.3.7 remain the same) ...
-// Add Bulk Button
+// Bulk processing functions
 add_action('restrict_manage_posts', function($post_type) {
-    if ($post_type !== 'business') return;
+    if ($post_type !== 'business') return; // CPT slug
     echo '<button type="button" class="button" id="bulk-ai-business">Bulk Add AI Reviews</button>';
     echo '<span id="bulk-ai-business-status" style="margin-left:5px;"></span>';
 });
 
-// Enqueue script for bulk operations
 add_action('admin_enqueue_scripts', function($hook) {
     $current_screen = get_current_screen();
-    if (!$current_screen || $current_screen->base !== 'edit' || $current_screen->id !== 'edit-business' || $current_screen->post_type !== 'business') {
+    if (!$current_screen || $current_screen->base !== 'edit' || $current_screen->id !== 'edit-business' || $current_screen->post_type !== 'business') { // CPT slug
         return; 
     }
     wp_enqueue_script(
@@ -375,20 +366,25 @@ add_action('admin_enqueue_scripts', function($hook) {
     ]);
 });
 
-// AJAX handler for bulk processing
 add_action('wp_ajax_bulk_ai_missing_business', function() {
     check_ajax_referer('bulk_ai_business_nonce', 'nonce');
-    // ... (rest of bulk logic from v2.3.7)
     $args = [
-        'post_type' => 'business', 'post_status' => 'publish', 'posts_per_page' => -1, 'fields' => 'ids',
-        'meta_query' => [ [ 'key' => '_gemini_last_results', 'compare' => 'NOT EXISTS' ] ] ];
+        'post_type' => 'business', // CPT slug
+        'post_status' => 'publish', 
+        'posts_per_page' => -1, 
+        'fields' => 'ids',
+        'meta_query' => [ [ 'key' => '_gemini_last_results', 'compare' => 'NOT EXISTS' ] ] 
+    ];
     $businesses = get_posts($args);
     if(empty($businesses)){  wp_send_json_error('All businesses already have AI reviews.'); return; }
+    
     $count = 0;
     $api_key = get_option( 'gemini2_api_key', '' );
-    $model = 'gemini-2.0-flash';
+    if ( ! $api_key ) { wp_send_json_error( 'Gemini API key not set for bulk processing.' ); return; }
+    $model = 'gemini-2.0-flash'; // or your desired model
+
     $prompt_text_template_bulk = <<<PROMPT
-You are an AI assistant tasked with writing a friendly, professional, and informative scuba shop review. The review should appeal to both beginner and experienced divers and be approximately 400-500 words long.
+You are an AI assistant tasked with writing a friendly, professional, and informative scuba shop review. The review should appeal to both beginner and experienced divers and be approximately 400-500 w[...]
 **IMPORTANT INSTRUCTIONS FOR YOUR OUTPUT:** (Same as single generation)
 **INPUT BULLET POINTS FOR AI:** (Same as single generation)
 **EXPECTED AI OUTPUT STRUCTURE (Use these exact plain text headers):**
@@ -410,10 +406,13 @@ PROMPT;
     foreach($businesses as $post_id){
         $name = get_post_meta($post_id, '_gpd_display_name', true);
         $city = get_post_meta($post_id, '_gpd_locality', true);
-        if(!$name || !$city) { error_log("Skipping Post ID $post_id in bulk: missing name or city."); continue; }
+        if(!$name || !$city) { 
+            error_log("Skipping Post ID $post_id in bulk: missing name or city."); 
+            continue; 
+        }
         $prompt_text = sprintf($prompt_text_template_bulk, $name, $city);
         $url   = sprintf( 'https://generativelanguage.googleapis.com/v1/models/%s:generateContent?key=%s', $model, $api_key );
-        $body_params = [ /* ... same as single generation ... */ 
+        $body_params = [
             'contents' => [ [ 'parts' => [ [ 'text' => $prompt_text, ], ], ], ],
             'generationConfig' => [ 'temperature'   => 0.6, 'maxOutputTokens' => 2048, ],
             'safetySettings' => [
@@ -424,27 +423,158 @@ PROMPT;
         ];
         $body = wp_json_encode($body_params);
         $response = wp_remote_post( $url, [ 'headers' => [ 'Content-Type' => 'application/json' ], 'body'    => $body, 'timeout' => 60, ] );
-        if ( is_wp_error( $response ) ) { error_log("Gemini Bulk AI WP_Error for Post ID $post_id: " . $response->get_error_message()); continue; }
+        
+        if ( is_wp_error( $response ) ) { 
+            error_log("Gemini Bulk AI WP_Error for Post ID $post_id: " . $response->get_error_message()); 
+            continue; 
+        }
         $response_code = wp_remote_retrieve_response_code( $response );
         $response_body = wp_remote_retrieve_body( $response );
-        if ( $response_code !== 200 ) { error_log("Gemini Bulk AI HTTP Error for Post ID $post_id: Code $response_code, Response: $response_body"); continue; }
+        if ( $response_code !== 200 ) { 
+            error_log("Gemini Bulk AI HTTP Error for Post ID $post_id: Code $response_code, Response: $response_body"); 
+            continue; 
+        }
         $data = json_decode( $response_body, true );
-        if ( isset( $data['error'] ) ) { error_log("Gemini Bulk AI API Error for Post ID $post_id: " . (isset($data['error']['message']) ? $data['error']['message'] : json_encode($data['error']))); continue; }
+        if ( isset( $data['error'] ) ) { 
+            error_log("Gemini Bulk AI API Error for Post ID $post_id: " . (isset($data['error']['message']) ? $data['error']['message'] : json_encode($data['error']))); 
+            continue;
+        }
         $output_text = '';
         if ( !empty($data['candidates']) && isset($data['candidates'][0]['content']['parts'][0]['text']) ) {
             $output_text = $data['candidates'][0]['content']['parts'][0]['text'];
         } elseif (isset($data['candidates'][0]['finishReason']) && $data['candidates'][0]['finishReason'] !== 'STOP') {
-            error_log("Gemini Bulk AI content generation incomplete/blocked for Post ID $post_id. Reason: " . $data['candidates'][0]['finishReason'] . ". Response: " . $response_body); continue;
-        } else { error_log("Gemini Bulk AI No Content for Post ID $post_id. Response: " . $response_body); continue; }
+            error_log("Gemini Bulk AI content generation incomplete/blocked for Post ID $post_id. Reason: " . $data['candidates'][0]['finishReason'] . ". Response: " . $response_body); 
+            continue;
+        } else { 
+            error_log("Gemini Bulk AI No Content for Post ID $post_id. Response: " . $response_body); 
+            continue; 
+        }
         
-        // For bulk, we just save the raw text. The shortcode will format it with the wrapper.
-        // Or, if you intend for bulk operations to also populate the editor, you'd format and wrap here too.
-        // For now, assuming bulk just saves meta for shortcode display:
         update_post_meta($post_id, '_gemini_last_results', $output_text);
         update_post_meta($post_id, '_gemini_last_searched', current_time('mysql'));
         $count++;
-        if ($count > 0 && $count % 3 == 0) { sleep(1); } // Rate limiting
+        if ($count > 0 && $count % 3 == 0) { sleep(1); } // Basic rate limiting
     }
+
     if ($count > 0) { wp_send_json_success("$count business(es) updated with AI reviews."); }
     else { wp_send_json_error('No businesses were updated. Check logs or if they already have reviews.'); }
 });
+
+// START: Add AI Status Column to Business CPT List
+// -------------------------------------------------
+
+// 1. Add the column header
+add_filter( 'manage_edit-business_columns', 'gemini_add_ai_status_column_header' );
+function gemini_add_ai_status_column_header( $columns ) {
+    $new_columns = [];
+    foreach ( $columns as $key => $title ) {
+        $new_columns[$key] = $title;
+        if ( $key === 'title' ) { // Placing it after the 'title' column
+            $new_columns['gemini_ai_status'] = __( 'AI', 'gemini2-business-lookup' );
+        }
+    }
+    // Fallback if 'title' column wasn't found (e.g. removed by another plugin)
+    if ( !isset($new_columns['gemini_ai_status']) && isset($columns['cb']) ) { // Add after checkbox if title is missing
+         $cb = $columns['cb'];
+         unset($columns['cb']);
+         $new_columns = array_merge(['cb' => $cb, 'gemini_ai_status' => __( 'AI', 'gemini2-business-lookup' )], $columns);
+    } elseif (!isset($new_columns['gemini_ai_status'])) { // Add at the end if no other suitable place
+        $new_columns['gemini_ai_status'] = __( 'AI', 'gemini2-business-lookup' );
+    }
+    return $new_columns;
+}
+
+// 2. Populate the column content
+// Replace the _debug function and its hook with this one
+add_action( 'manage_business_posts_custom_column', 'gemini_render_ai_status_column_content', 10, 2 );
+function gemini_render_ai_status_column_content( $column_name, $post_id ) {
+    if ( $column_name === 'gemini_ai_status' ) {
+        $ai_results_raw = get_post_meta( $post_id, '_gemini_last_results', true );
+        $post_content = get_post_field( 'post_content', $post_id );
+
+        if ( ! empty( $ai_results_raw ) ) {
+            // Key indicators that the AI content is likely present, even if slightly modified
+            $found_wrapper_div = strpos( $post_content, '<div class="gemini-review">' ) !== false;
+            $found_start_comment = strpos( $post_content, '<!-- Starting gemini_format_review_content_to_html -->' ) !== false;
+            // You could add another check for a common header if needed, e.g., '<h3>Introduction</h3>'
+            // but be mindful if users might legitimately type that.
+            // $found_intro_header = strpos( $post_content, '<h3>Introduction</h3>') !== false;
+
+            if ( $found_wrapper_div && $found_start_comment ) {
+                // If Dashicons are consistently stripped, we might not be able to reliably check for them in post_content.
+                // The green check now means the main structure is there.
+                echo '<span class="dashicons dashicons-yes-alt" style="color: #4CAF50;" title="' . esc_attr__('AI Content Structure Found in Editor', 'gemini2-business-lookup') . '"></span>';
+            } else if ($found_wrapper_div) {
+                 // Wrapper is there, but maybe not the comment (e.g. if only part of it was pasted or heavily edited)
+                echo '<span class="dashicons dashicons-warning" style="color: #E69A17;" title="' . esc_attr__('AI Content Wrapper Found, but Structure May Be Altered', 'gemini2-business-lookup') . '"></span>';
+            }
+            else {
+                // Raw results exist, but the key structural elements are not in post_content.
+                echo '<span class="dashicons dashicons-no-alt" style="color: #D32F2F;" title="' . esc_attr__('AI Content Generated but Not Found in Editor', 'gemini2-business-lookup') . '"></span>';
+            }
+        } else {
+            echo '—'; // Em dash for "not generated" status
+        }
+    }
+}
+/** add_action( 'manage_business_posts_custom_column', 'gemini_render_ai_status_column_content', 10, 2 );
+function gemini_render_ai_status_column_content( $column_name, $post_id ) {
+    if ( $column_name === 'gemini_ai_status' ) {
+        $ai_results_raw = get_post_meta( $post_id, '_gemini_last_results', true );
+        $post_content = get_post_field( 'post_content', $post_id );
+
+        if ( ! empty( $ai_results_raw ) ) {
+            // Format the raw AI results just like it's done before editor insertion
+            $unwrapped_html_content = gemini_format_review_content_to_html( $ai_results_raw );
+            // Ensure the wrapping div and newlines match exactly how it's inserted
+            $expected_html_in_editor = '<div class="gemini-review">' . "\n" . $unwrapped_html_content . "\n" . '</div>';
+
+            // Check if the formatted & wrapped HTML is found in the post_content
+            if ( strpos( $post_content, $expected_html_in_editor ) !== false ) {
+                echo '<span class="dashicons dashicons-yes-alt" style="color: #4CAF50;" title="' . esc_attr__('AI Content Generated and Found in Editor', 'gemini2-business-lookup') . '"></span>';
+            } else {
+                echo '<span class="dashicons dashicons-warning" style="color: #FFC107;" title="' . esc_attr__('AI Content Generated but Not Found/Modified in Editor', 'gemini2-business-lookup') . '"></span>';
+            }
+        } else {
+            echo '—'; // Em dash for "not generated" status
+        }
+    }
+} **/
+
+// 3. Make the column sortable
+add_filter( 'manage_edit-business_sortable_columns', 'gemini_make_ai_status_column_sortable' );
+function gemini_make_ai_status_column_sortable( $columns ) {
+    $columns['gemini_ai_status'] = 'gemini_ai_status_sort'; // The value is a key for query_vars
+    return $columns;
+}
+
+// 4. Handle the sorting logic
+add_action( 'pre_get_posts', 'gemini_ai_status_column_orderby' );
+function gemini_ai_status_column_orderby( $query ) {
+    if ( ! is_admin() || ! $query->is_main_query() ) {
+        return;
+    }
+
+    $orderby = $query->get( 'orderby');
+    if ( 'gemini_ai_status_sort' === $orderby ) {
+        $meta_query = $query->get('meta_query');
+        if(!is_array($meta_query)){
+            $meta_query = [];
+        }
+        // This will sort primarily by whether the _gemini_last_results meta key exists.
+        // Posts with the key will be grouped.
+        // A more nuanced sort (e.g. distinguishing between generated+in_editor vs generated+not_in_editor)
+        // would require saving another meta field specifically for sorting or a more complex query.
+        $meta_query[] = [
+            'key' => '_gemini_last_results',
+            'compare' => 'EXISTS', // Prioritize posts that have the meta key
+        ];
+        $query->set( 'meta_query', $meta_query );
+        $query->set( 'orderby', 'meta_value' ); // Order by the content of _gemini_last_results
+                                                // (or 'meta_key' if you just want to sort by existence)
+    }
+}
+// END: Add AI Status Column to Business CPT List
+// -----------------------------------------------
+
+?>
