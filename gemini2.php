@@ -28,18 +28,19 @@ function gemini_format_review_content_to_html( $raw_content ) {
     $in_list_type = null; 
     $current_section_key = null; 
 
+    // Replacing Dashicons with Unicode Emojis
     $section_headers_map = [
-        'Introduction' => ['icon' => 'dashicons-info-outline', 'title' => 'Introduction'],
-        'Product Range' => ['icon' => 'dashicons-cart', 'title' => 'Product Range'],
-        'Pricing' => ['icon' => 'dashicons-tag', 'title' => 'Pricing'],
-        'Customer Service' => ['icon' => 'dashicons-admin-users', 'title' => 'Customer Service'],
-        'Training & Certification' => ['icon' => 'dashicons-awards', 'title' => 'Training & Certification'],
-        'Facilities & Atmosphere' => ['icon' => 'dashicons-store', 'title' => 'Facilities & Atmosphere'],
-        'Servicing & Repairs' => ['icon' => 'dashicons-admin-tools', 'title' => 'Servicing & Repairs'],
-        'Dive Trips & Events' => ['icon' => 'dashicons-palmtree', 'title' => 'Dive Trips & Events'],
-        'Accessibility' => ['icon' => 'dashicons-location-alt', 'title' => 'Accessibility'],
-        'Summary' => ['icon' => 'dashicons-star-filled', 'title' => 'Summary'],
-        'Pros & Cons' => ['icon' => 'dashicons-yes-alt', 'title' => 'Pros & Cons'] 
+        'Introduction' => ['icon' => '📘', 'title' => 'Introduction'],
+        'Product Range' => ['icon' => '🛍️', 'title' => 'Product Range'],
+        'Pricing' => ['icon' => '💰', 'title' => 'Pricing'],
+        'Customer Service' => ['icon' => '🤝', 'title' => 'Customer Service'],
+        'Training & Certification' => ['icon' => '🎓', 'title' => 'Training & Certification'],
+        'Facilities & Atmosphere' => ['icon' => '🏢', 'title' => 'Facilities & Atmosphere'],
+        'Servicing & Repairs' => ['icon' => '🔧', 'title' => 'Servicing & Repairs'],
+        'Dive Trips & Events' => ['icon' => '🌴', 'title' => 'Dive Trips & Events'],
+        'Accessibility' => ['icon' => '♿', 'title' => 'Accessibility'],
+        'Summary' => ['icon' => '⭐', 'title' => 'Summary'],
+        'Pros & Cons' => ['icon' => '⚖️', 'title' => 'Pros & Cons'] 
     ];
     $first_content_line_processed = false; 
 
@@ -89,7 +90,7 @@ function gemini_format_review_content_to_html( $raw_content ) {
                 $html_output .= "</ul>\n";
                 $in_list_type = null;
             }
-            $icon_span = $header_details['icon'] ? '<span class="dashicons ' . esc_attr($header_details['icon']) . '"></span> ' : '';
+            $icon_span = $header_details['icon'] ? esc_html($header_details['icon']) . ' ' : '';
             $html_output .= '<h3>' . $icon_span . esc_html( $header_details['title'] ) . "</h3>\n";
         } 
         elseif ($current_section_key === 'Pros & Cons' && strpos($trimmed_line, '✔️ ') === 0) {
@@ -142,6 +143,7 @@ function gemini_format_review_content_to_html( $raw_content ) {
     $html_output .= '<!-- Finished gemini_format_review_content_to_html -->';
     return $html_output;
 }
+
 
 // 2) Add meta box to the Business CPT
 function gemini_add_meta_boxes() {
