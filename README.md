@@ -1,6 +1,6 @@
 # Gemini AI Business Review Generator for WordPress
 
-**Requires the Google Places Plugin
+**Requires the Google Places Import Plugin
 
 Version: 2.3.9
 Author: TheRev
