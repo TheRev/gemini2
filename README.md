@@ -1,115 +1,144 @@
-# Gemini AI Business Review Generator for WordPress
+# Google Places Directory
 
-**Requires the Google Places Import Plugin (or a similar plugin providing business name and locality meta fields)**
+**Contributors:** TheRev
+**Requires at least:** 5.0 (Suggest a version you've tested with)
+**Tested up to:** (The latest WordPress version you've tested with, e.g., 6.5)
+**Stable tag:** 1.0.0
+**License:** GPLv2 or later (Suggest choosing a license)
+**License URI:** https://www.gnu.org/licenses/gpl-2.0.html
 
-Version: 3.0.0
-Author: TheRev
+A WordPress plugin to search, import, and manage business listings from the Google Places API, organizing them into a custom post type with relevant taxonomies.
 
 ## Description
 
-The **Gemini AI Business Review Generator** is a WordPress plugin designed to seamlessly integrate with your existing business listings (e.g., from Google Places). It leverages the Google Gemini API to automatically generate rich, structured reviews for businesses, particularly tailored for operations like dive shops.
+Google Places Directory allows you to easily populate your WordPress site with business listings. Search for businesses using the Google Places API, filter by radius, and import them directly into a "Business" custom post type. Imported businesses can be categorized by "Destination" and "Region" taxonomies, making them easy to manage and display.
 
-This plugin helps you enhance your business listings with unique content, saving you time and effort in crafting individual reviews. The generated reviews are designed to appeal to both beginners and experienced customers, with a focus on providing informative and engaging content.
+This plugin is ideal for creating local directories, travel guides, or any site that needs to showcase a curated list of businesses.
 
 ## Features
 
-*   **Automatic AI Review Generation**: Utilizes the Google Gemini API (specifically the `gemini-2.0-flash` model) to create detailed business reviews.
-*   **Single Business Review Generation**: Generate or update an AI review directly from the business post editor screen.
-*   **Structured Content**: Generated reviews follow a predefined structure including sections like Introduction, Product Range, Customer Service, etc., each potentially headed by a relevant Unicode icon.
-*   **HTML Formatting**: Raw AI output is automatically formatted into clean HTML with appropriate headers (using Unicode icons), lists (including pros/cons with "✔️" and "❌" Unicode icons), and paragraphs.
-*   **Editor Integration**: Generated HTML content can be directly inserted into the Gutenberg or Classic WordPress editor.
-*   **Admin Settings Page**: A dedicated settings page (`Settings > Gemini2`) to securely store your Google Gemini API key.
-*   **AI Status Admin Column (Conceptual - Implementation details may vary)**: Adds a sortable "AI" column to your 'Business' Custom Post Type list in the WordPress admin. This column visually indicates:
-    *   If an AI review has been generated.
-    *   If the generated review content is found within the main post editor content.
-    *   Uses Dashicons for quick status recognition (e.g., Generated & In Editor, Generated & Not in Editor, Not Generated).
-*   **Shortcode Display**: Use the `[gemini_review post_id="123"]` or `[gemini_description post_id="123"]` shortcode to display the formatted AI review on the frontend.
-*   **Customizable Styling**: Comes with a CSS file (`css/gemini-review-styles.css`) for styling the AI-generated reviews, which can be easily overridden by your theme. Styles are also applied in the editor for a more WYSIWYG experience.
-*   **Unicode Icon Integration**: Uses Unicode characters for section headers and list item indicators within the generated review content for a modern look.
-
-## Prerequisites
-
-1.  **WordPress Installation**: A working WordPress website.
-2.  **Business Listings Plugin**: A plugin that manages your business listings as a Custom Post Type (e.g., 'business') and stores the business name and city/locality in post meta fields. This plugin is designed to work with meta keys:
-    *   `_gpd_display_name` for the business name.
-    *   `_gpd_locality` for the business city.
-    *(If your plugin uses different meta keys, you will need to adjust them in `includes/class-gemini2-ajax-handler.php`)*.
-3.  **Google Gemini API Key**: You need a valid API key from Google AI Studio or Google Cloud AI Platform with the Gemini API enabled.
+*   **Custom Post Type:** Adds a "Business" CPT to store imported listings.
+*   **Custom Taxonomies:** Organizes businesses using "Destinations" and "Regions".
+*   **Admin Import Interface:**
+    *   Search for businesses via Google Places API using keywords and radius.
+    *   Paginated search results.
+    *   Flags already imported businesses to prevent duplicates.
+    *   Select specific businesses to import from search results.
+    *   Bulk import selected businesses.
+    *   Inline AJAX import for individual businesses directly from the search results.
+*   **API Key Configuration:** Securely store your Google Places API key via a dedicated settings page.
+*   **Admin Filtering:** Filter the "Business" CPT list table by "Destinations" and "Regions" for easier management.
+*   **Data Storage:** Saves key business details as post meta, including:
+    *   Google Place ID
+    *   Formatted Address
+    *   Locality (City)
+    *   Latitude & Longitude
+    *   Business Types
+    *   Rating
+    *   Business Status
+    *   Google Maps URL
 
 ## Installation
 
-1.  **Download the Plugin**: Download the plugin files (e.g., as a ZIP archive).
-2.  **Upload to WordPress**:
-    *   Log in to your WordPress admin area.
-    *   Navigate to `Plugins` > `Add New`.
-    *   Click on the `Upload Plugin` button.
-    *   Choose the downloaded ZIP file and click `Install Now`.
-3.  **Activate the Plugin**: Once uploaded, activate the "Gemini2 AI Business Lookup (OOP)" plugin from your Plugins page.
-4.  **Configure API Key**:
-    *   Go to `Settings` > `Gemini2`.
-    *   Enter your Google Gemini API key in the provided field.
-    *   Click `Save Changes`.
+1.  **Download:**
+    *   Download the plugin `.zip` file from [Source, e.g., GitHub Releases, WordPress.org - if applicable].
+    *   Or, clone the repository if you are installing from source.
+2.  **Upload to WordPress:**
+    *   In your WordPress admin panel, go to "Plugins" > "Add New".
+    *   Click "Upload Plugin" and choose the downloaded `.zip` file.
+    *   Alternatively, extract the `.zip` file and upload the `google-places-directory` folder to your `wp-content/plugins/` directory.
+3.  **Activate:**
+    *   Go to "Plugins" in your WordPress admin panel.
+    *   Find "Google Places Directory" and click "Activate".
 
-## How to Use
+## Configuration
 
-### Generating a Single AI Review
+1.  **Obtain a Google Places API Key:**
+    *   You'll need a Google Cloud Platform project with the "Places API" enabled.
+    *   Create an API key. Make sure to restrict it appropriately for security (e.g., to your website's domain or IP address, and only allow it to access the Places API).
+    *   [Link to Google Cloud Console or instructions for getting an API key]
+2.  **Enter API Key in WordPress:**
+    *   In your WordPress admin panel, navigate to "Businesses" > "Settings".
+    *   Enter your Google Places API Key in the provided field.
+    *   Click "Save Settings".
 
-1.  Navigate to your 'Business' Custom Post Type (or the CPT used by your business listings plugin).
-2.  Edit an existing business listing or create a new one.
-3.  Ensure the business has a 'Display Name' and 'Locality' (City) saved in its metadata (e.g., `_gpd_display_name` and `_gpd_locality` meta fields).
-4.  In the post editor, you will find a meta box titled "Gemini AI Business Description".
-5.  Click the "Generate Business Description with AI" button.
-6.  The plugin will call the Gemini API. Upon success:
-    *   A status message will appear.
-    *   The raw AI output and formatted HTML will be displayed within the meta box.
-    *   The formatted HTML content will be automatically inserted into your WordPress editor.
-7.  Review the inserted content and make any desired adjustments.
-8.  Save or update your post.
+## Usage
 
-### AI Status Column (If Implemented)
+1.  **Navigate to the Importer:**
+    *   In your WordPress admin, go to "Businesses" > "Business Import".
+2.  **Search for Businesses:**
+    *   **Search Query:** Enter your keywords (e.g., "restaurants in New York", "cafes near Eiffel Tower").
+    *   **Radius (km):** Select the search radius around the identified location.
+    *   **Results:** Choose how many results per page you'd like to see.
+    *   Click the "Search" button.
+3.  **Review and Import:**
+    *   The search results will be displayed in a table.
+    *   Businesses that have already been imported will be marked and have their checkbox disabled.
+    *   By default, all new businesses in the results are checked for import. Uncheck any you do not wish to import.
+    *   **Bulk Import:** Click the "Import Selected" button at the bottom of the table to import all checked businesses.
+    *   **Inline Import:** Click the "Import" button (or refresh icon if it's an update) next to an individual business listing to import or update it immediately via AJAX.
+    *   Use the "Prev Page" and "Next Page" buttons to navigate through search results if there are multiple pages.
+4.  **View Imported Businesses:**
+    *   Imported businesses will appear under the "Businesses" menu item in your WordPress admin.
+    *   You can view, edit, or delete them like any other WordPress post.
+    *   On the "Businesses" list table, you can use the "All Destinations" and "All Regions" dropdowns to filter the listings.
 
-In the admin list view for your 'Business' CPT (e.g., `wp-admin/edit.php?post_type=business`):
+## Screenshots
 
-*   A new column labeled "AI" may be visible.
-*   Icons (likely Dashicons) would indicate the status of AI content generation and integration for each post.
-*   The column might be sortable.
+*(It's highly recommended to add screenshots here)*
 
-### Displaying Reviews on the Frontend
+1.  *Screenshot of the Business Import page with search fields.*
+    `[alt text](link_to_screenshot_1.png)`
+2.  *Screenshot of the search results table showing businesses and import options.*
+    `[alt text](link_to_screenshot_2.png)`
+3.  *Screenshot of the Settings page for the API key.*
+    `[alt text](link_to_screenshot_3.png)`
+4.  *Screenshot of the Business CPT list table with Destination/Region filters.*
+    `[alt text](link_to_screenshot_4.png)`
 
-The plugin is designed to insert the AI-generated review directly into the post's main content area. After generation, ensure you **Update** or **Publish** the post to save the content.
+## Frequently Asked Questions
 
-Alternatively, you can use the following shortcode in your posts, pages, or templates where you want to display the AI-generated review:
+*   **Q: Where do I get a Google Places API Key?**
+    A: You need to create a project in the Google Cloud Platform console, enable the "Places API", and generate an API key. [Link to Google's documentation]
 
-`[gemini_review post_id="YOUR_BUSINESS_POST_ID"]`
+*   **Q: What data is imported for each business?**
+    A: The plugin imports the business name, formatted address, city (for the Destination taxonomy), latitude, longitude, business types, Google rating, business status, and a link to its Google Maps page.
 
-Or its alias:
+*   **Q: How are "Destinations" and "Regions" determined?**
+    A: "Destinations" are automatically populated based on the 'locality' (city) found in the Google Places API data for the business. "Regions" can be managed manually like any other WordPress taxonomy.
 
-`[gemini_description post_id="YOUR_BUSINESS_POST_ID"]`
+## Changelog
 
-Replace `YOUR_BUSINESS_POST_ID` with the actual ID of the business post. The necessary styles will be enqueued automatically if the shortcode is detected or if viewing a single 'business' post type.
+### 1.0.0 - YYYY-MM-DD
+* Initial release.
 
-## Customization
+## For Developers
 
-*   **Styling**: Modify `css/gemini-review-styles.css` or add overriding styles to your theme's stylesheet to change the appearance of the reviews.
-*   **Prompt Engineering**: The AI generation prompt is located in the `handle_generate_description()` method within `includes/class-gemini2-ajax-handler.php`. You can adjust this prompt to better suit different business types or desired output styles.
-*   **Meta Keys**: If your business listing plugin uses different meta keys for business name and city, update the `get_post_meta()` calls in `handle_generate_description()` in `includes/class-gemini2-ajax-handler.php`.
-*   **HTML Structure & Icons**: The HTML formatting logic and the mapping of section headers to Unicode icons are primarily managed within `includes/class-gemini2-content-formatter.php` (this file's content was not fully provided but is referenced).
+### Custom Post Type Details
 
-## Important Notes
+*   **Slug:** `business`
+*   **Supports:** `title`, `editor`, `custom-fields`
+*   **Taxonomies:** `destination`, `region`
 
-*   **API Costs**: Use of the Google Gemini API may incur costs depending on your usage and Google's pricing model. Monitor your API usage in your Google Cloud Console or Google AI Studio.
-*   **Content Quality**: AI-generated content should **always** be reviewed and edited for accuracy, tone, and relevance before publishing. It's a tool to assist, not replace, human oversight.
-*   **Rate Limiting**: Be mindful of API rate limits if you plan to generate reviews in bulk. The current plugin focuses on single generation.
-*   **Plugin Conflicts**: While designed to be compatible, conflicts with other plugins (especially those heavily modifying the editor or AJAX handling) are possible. Test thoroughly.
+### Key Meta Fields for `business` CPT:
 
-## Troubleshooting
+*   `_gpd_place_id`: (string) The unique Google Place ID.
+*   `_gpd_display_name`: (string) Business name.
+*   `_gpd_address`: (string) Full formatted address.
+*   `_gpd_locality`: (string) City/locality (used for Destination taxonomy).
+*   `_gpd_latitude`: (float) Latitude.
+*   `_gpd_longitude`: (float) Longitude.
+*   `_gpd_types`: (JSON string) Array of business types from Google.
+*   `_gpd_rating`: (float) Google rating.
+*   `_gpd_business_status`: (string) e.g., "OPERATIONAL".
+*   `_gpd_maps_uri`: (URL string) Link to the business on Google Maps.
 
-*   **API Key Not Set**: Ensure your API key is correctly entered and saved in `Settings > Gemini2`.
-*   **Business Name/City Missing**: The plugin requires business name and city metadata to be present for the target post. Check if these fields are populated.
-*   **API Errors**: Check the status message in the meta box or your browser's developer console for error details from the Gemini API. Common issues include invalid API keys, billing not enabled for the associated Google Cloud project, or API rate limits being hit. The `includes/class-gemini2-api-client.php` has detailed error handling.
-*   **Content Not Inserting**: If content generates but doesn't insert into the editor, check for JavaScript errors in your browser's console. It might indicate an incompatibility with your theme or another plugin.
-*   **Styling Issues**: Ensure `css/gemini-review-styles.css` is loading on the frontend. Clear caches (browser, plugin, server) if styles don't appear or update.
+*(Add any actions or filters developers can hook into if you plan to include them.)*
 
 ---
 
-This plugin is intended to be a helpful tool for content generation. Always review and refine AI-generated content to ensure it meets your quality standards and accurately represents the businesses.
+This README provides a solid foundation. Remember to:
+*   Replace placeholder dates, links, and screenshot paths.
+*   Decide on and specify a license.
+*   Review and update the "Tested up to" WordPress version as you test.
+*   Add more to the FAQ or Developer sections as the plugin evolves.
