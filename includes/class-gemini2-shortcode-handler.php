@@ -65,12 +65,14 @@ class Gemini2_Shortcode_Handler {
         $core_html_content = $this->content_formatter->format( $raw_content );
 
         // Build the output HTML
+        $content_check = trim(preg_replace('/<!--.*?-->/s', '', strip_tags($core_html_content)));
+        if ($content_check === '') {
+            return '';
+        }
         $output_html = '<div class="' . esc_attr( $atts['class'] ) . '">';
-
         if ( ! empty( $atts['header'] ) ) {
             $output_html .= '<h2 class="gemini-review-shortcode-header">' . esc_html( $atts['header'] ) . '</h2>';
         }
-
         $output_html .= $core_html_content;
         $output_html .= '</div>';
 

@@ -87,7 +87,11 @@ PROMPT;
 
         // Format content for editor
         $unwrapped_html_content = $this->content_formatter->format( $raw_ai_output );
-        $html_content_for_editor = '<div class="gemini-review">' . "\n" . $unwrapped_html_content . "\n" . '</div>';
+        if (trim($unwrapped_html_content) !== '') {
+            $html_content_for_editor = '<div class="gemini-review">' . "\n" . $unwrapped_html_content . "\n" . '</div>';
+        } else {
+            $html_content_for_editor = '';
+        }
 
         wp_send_json_success( array(
             'message'      => 'Description generated successfully!',

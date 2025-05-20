@@ -34,14 +34,19 @@ class Gemini2_Content_Formatter {
         }
 
         $lines = explode( "\n", $raw_content );
-        $html_output = '<!-- Starting Gemini2 Content Formatting -->';
+        $output = '';
         $in_list_type = null; // null, 'pros', 'cons', 'generic'
         $current_section_key = null;
         $first_content_line_processed = false;
+        $list_buffer = [];
 
         foreach ( $lines as $line ) {
             $trimmed_line = trim( $line );
             if ( empty( $trimmed_line ) ) {
+                continue;
+            }
+            // Skip Markdown horizontal rule remnant
+            if ($trimmed_line === '---') {
                 continue;
             }
 
@@ -60,69 +65,94 @@ class Gemini2_Content_Formatter {
             $header_details = null;
 
             if (isset($this->section_headers_map[$cleaned_for_header_check])) {
+                // Output any buffered list before new section
+                if ($in_list_type && count($list_buffer)) {
+                    $output .= $this->render_gutenberg_list_block($list_buffer);
+                    $list_buffer = [];
+                    $in_list_type = null;
+                }
                 $header_details = $this->section_headers_map[$cleaned_for_header_check];
                 $is_header_match = true;
                 $current_section_key = $cleaned_for_header_check;
             }
 
             if ( $is_header_match && $header_details ) {
-                if ( $in_list_type ) {
-                    $html_output .= "</ul>\n";
-                    $in_list_type = null;
-                }
-                // Prepend Unicode icon directly, ensure space after icon
+                $level = 3; // Default to h3, but you can adjust if you want to support other levels
                 $icon_prefix = $header_details['icon'] ? esc_html($header_details['icon']) . ' ' : '';
-                $html_output .= '<h3>' . $icon_prefix . esc_html( $header_details['title'] ) . "</h3>\n";
-            }
-            // Pros & Cons list items - keep the Unicode symbol as part of the text
-            elseif ($current_section_key === 'Pros & Cons' && (strpos($trimmed_line, '✔️ ') === 0 || strpos($trimmed_line, '✅ ') === 0 )) {
-                if ($in_list_type !== 'pros') {
-                    if ($in_list_type) $html_output .= "</ul>\n";
-                    $html_output .= '<ul class="gemini-pros-list">' . "\n";
-                    $in_list_type = 'pros';
+                $output .= '<!-- wp:heading {"level":' . $level . '} --><h' . $level . '>' . $icon_prefix . esc_html( $header_details['title'] ) . '</h' . $level . '><!-- /wp:heading -->' . "\n";
+                // If this is the Pros & Cons section, set a flag to output plain text only
+                if ($current_section_key === 'Pros & Cons') {
+                    $in_list_type = 'proscons_plain';
+                    continue;
                 }
-                $item_content = $this->format_text_emphasis($trimmed_line);
-                $html_output .= '<li class="gemini-pro-item">' . $item_content . "</li>\n";
             }
-            elseif ($current_section_key === 'Pros & Cons' && (strpos($trimmed_line, '❌ ') === 0 || strpos($trimmed_line, '✖️ ') === 0)) {
-                if ($in_list_type !== 'cons') {
-                    if ($in_list_type) $html_output .= "</ul>\n";
-                    $html_output .= '<ul class="gemini-cons-list">' . "\n";
-                    $in_list_type = 'cons';
+            elseif ($in_list_type === 'proscons_plain') {
+                // For Pros & Cons, output check mark for pros and X for cons, using unicode
+                if (preg_match('/^(✔️ |✅ |- |\* )/', $trimmed_line)) {
+                    $plain_text = trim(preg_replace('/^(✔️ |✅ |- |\* )/', '', $trimmed_line));
+                    $plain_text = strip_tags($plain_text);
+                    if ($plain_text !== '') {
+                        $output .= '<!-- wp:paragraph -->✔️ ' . esc_html($plain_text) . '<!-- /wp:paragraph -->' . "\n";
+                    }
+                } elseif (preg_match('/^(❌ |✖️ )/', $trimmed_line)) {
+                    $plain_text = trim(preg_replace('/^(❌ |✖️ )/', '', $trimmed_line));
+                    $plain_text = strip_tags($plain_text);
+                    if ($plain_text !== '') {
+                        $output .= '<!-- wp:paragraph -->❌ ' . esc_html($plain_text) . '<!-- /wp:paragraph -->' . "\n";
+                    }
+                } else {
+                    $plain_text = strip_tags($trimmed_line);
+                    if ($plain_text !== '') {
+                        $output .= '<!-- wp:paragraph -->' . esc_html($plain_text) . '<!-- /wp:paragraph -->' . "\n";
+                    }
                 }
-                $item_content = $this->format_text_emphasis($trimmed_line);
-                $html_output .= '<li class="gemini-con-item">' . $item_content . "</li>\n";
+                continue;
             }
             elseif ( strpos( $trimmed_line, '-' ) === 0 || strpos( $trimmed_line, '*' ) === 0 ) {
-                if ($in_list_type === 'pros' || $in_list_type === 'cons') {
-                     $html_output .= "</ul>\n";
-                     $in_list_type = null; 
+                if ($in_list_type !== 'generic' && count($list_buffer)) {
+                    $output .= $this->render_gutenberg_list_block($list_buffer);
+                    $list_buffer = [];
                 }
-                if ( $in_list_type !== 'generic' ) {
-                    if ($in_list_type) $html_output .= "</ul>\n"; 
-                    $html_output .= '<ul class="gemini-generic-list">' . "\n";
-                    $in_list_type = 'generic';
-                }
+                $in_list_type = 'generic';
                 $list_item_content = ltrim( $trimmed_line, '-* ' );
                 $list_item_content = $this->format_text_emphasis($list_item_content);
-                $html_output .= '<li>' . $list_item_content . "</li>\n"; 
+                $list_buffer[] = $list_item_content;
             }
             else {
-                if ( $in_list_type ) {
-                    $html_output .= "</ul>\n";
+                if ($in_list_type && count($list_buffer)) {
+                    $output .= $this->render_gutenberg_list_block($list_buffer);
+                    $list_buffer = [];
                     $in_list_type = null;
                 }
                 $paragraph_text = preg_replace('/^\d+\.\s+/', '', $trimmed_line);
                 $paragraph_text = $this->format_text_emphasis($paragraph_text);
-                $html_output .= '<p>' . $paragraph_text . "</p>\n";
+                $output .= '<!-- wp:paragraph -->' . $paragraph_text . "<!-- /wp:paragraph -->\n";
             }
         }
 
-        if ( $in_list_type ) {
-            $html_output .= "</ul>\n";
+        if ($in_list_type && count($list_buffer)) {
+            $output .= $this->render_gutenberg_list_block($list_buffer);
         }
-        $html_output .= '<!-- Finished Gemini2 Content Formatting -->';
-        return $html_output;
+        if ($output === '') {
+            $output = '';
+        }
+        $output .= '<!-- Finished Gemini2 Content Formatting -->';
+        return $output;
+    }
+
+    private function render_gutenberg_list_block($items) {
+        // Output a Gutenberg list block as valid HTML for maximum compatibility
+        if (empty($items)) return '';
+        $block = "<!-- wp:list -->\n<ul>\n";
+        foreach ($items as $item) {
+            $item = strip_tags($item);
+            $item = trim($item);
+            if ($item !== '') {
+                $block .= '<li>' . esc_html($item) . '</li>' . "\n";
+            }
+        }
+        $block .= "</ul>\n<!-- /wp:list -->\n";
+        return $block;
     }
 
     private function clean_header_text( $text ) {
