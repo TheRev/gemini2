@@ -49,7 +49,7 @@ class Gemini2_AJAX_Handler {
         // Construct the prompt (similar to the original plugin)
         // Consider making this prompt template configurable or more dynamic
         $prompt_text_template = <<<PROMPT
-You are an AI assistant tasked with writing a friendly, professional, and informative scuba shop review.
+You are an AI assistant tasked with writing a friendly, professional, and informative scuba shop review. Do not use I or any first person pronouns.
 The review should appeal to both beginner and experienced divers and be approximately 400-500 words.
 Your output should be in Markdown-like format. Use standard Markdown for headers, lists, and emphasis.
 Specifically for Pros & Cons, use "✔️ Pro Item" or "❌ Con Item" for each point.
